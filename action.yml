@@ -1,0 +1,176 @@
+name: 'Vesvabot'
+description: >-
+  AI GitHub bot powered by the Vesvai Go SDK. Solves labeled issues and opens
+  pull requests, reviews pull requests, answers @vesvabot mentions from
+  repository admins, and rewrites release notes.
+author: 'vesvabot'
+branding:
+  icon: 'bot'
+  color: 'purple'
+
+inputs:
+  mode:
+    description: >-
+      Bot mode. One of: solve-issue, review-pr, respond, release-notes.
+    required: true
+  token:
+    description: >-
+      GitHub token. Use ${{ secrets.GITHUB_TOKEN }} or a fine-grained PAT for
+      the bot account.
+    required: true
+
+  llm-provider:
+    description: 'LLM provider name as registered in vesvai, e.g. anthropic, openai.'
+    required: true
+  llm-model:
+    description: 'LLM model id, e.g. claude-sonnet-4-5 or gpt-4o.'
+    required: true
+  llm-api-key:
+    description: 'API key for the LLM provider. Pass it as a secret.'
+    required: true
+  llm-base-url:
+    description: 'Optional base URL override for the provider (e.g. a proxy or self-hosted endpoint).'
+    required: false
+    default: ''
+
+  prompt-file:
+    description: >-
+      Path (relative to the workspace) of a Markdown prompt file, e.g.
+      .github/prompts/solve-issue.md. Its content is appended to the mode's
+      default system prompt.
+    required: false
+    default: ''
+  skills-dir:
+    description: >-
+      Path (relative to the workspace) of a directory of SKILL.md skill folders
+      to load into the agent, e.g. .github/prompts.
+    required: false
+    default: ''
+
+  issue-number:
+    description: 'Issue number to act on (solve-issue, respond).'
+    required: false
+    default: ''
+  pull-request-number:
+    description: 'Pull request number to act on (review-pr, respond).'
+    required: false
+    default: ''
+  release-id:
+    description: 'Release id to update (release-notes).'
+    required: false
+    default: ''
+  comment-id:
+    description: 'Comment id that mentioned the bot (respond).'
+    required: false
+    default: ''
+
+  required-permission:
+    description: >-
+      Minimum actor permission for respond mode: admin, write or read.
+      Owner counts as admin.
+    required: false
+    default: 'admin'
+  unauthorized-action:
+    description: 'What to do when the actor lacks the required permission: skip (default) or comment.'
+    required: false
+    default: 'skip'
+  bot-login:
+    description: 'The bot account login. Its own comments are never answered.'
+    required: false
+    default: 'vesvabot'
+  branch-prefix:
+    description: 'Branch prefix for solve-issue (branch becomes <prefix>/issue-<n>).'
+    required: false
+    default: 'vesvabot'
+  base-branch:
+    description: 'Base branch for pull requests opened by solve-issue.'
+    required: false
+    default: 'main'
+  max-iterations:
+    description: 'Maximum agent iterations per run.'
+    required: false
+    default: '80'
+  timeout-minutes:
+    description: 'Maximum agent runtime in minutes before the run is aborted.'
+    required: false
+    default: '30'
+  max-attachments:
+    description: 'Maximum image attachments downloaded from an issue/PR thread.'
+    required: false
+    default: '5'
+  workspace:
+    description: 'Agent workspace root relative to the checkout (default: repository root).'
+    required: false
+    default: ''
+  dry-run:
+    description: 'When true, nothing is written to GitHub (no comments, PRs or releases).'
+    required: false
+    default: 'false'
+
+  github-server-url:
+    description: 'GitHub server URL used for git push authentication (GHES: your enterprise host).'
+    required: false
+    default: 'https://github.com'
+  ghes-api-base-url:
+    description: 'GitHub Enterprise API base URL, e.g. https://ghe.example.com/api/v3/. Leave empty on github.com.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26.5'
+        cache-dependency-path: ${{ github.action_path }}/go.sum
+
+    - name: Configure git authentication
+      shell: bash
+      run: |
+        git config --global --add safe.directory "*"
+        HOST="$(printf '%s' "$INPUT_GITHUB_SERVER_URL" | sed -E 's#^https?://##; s#/.*##')"
+        git config --global url."https://x-access-token:${INPUT_TOKEN}@${HOST}/".insteadOf "https://${HOST}/"
+        git config --global user.name "$INPUT_BOT_LOGIN"
+        git config --global user.email "$INPUT_BOT_LOGIN@users.noreply.github.com"
+      env:
+        INPUT_GITHUB_SERVER_URL: ${{ inputs.github-server-url }}
+        INPUT_BOT_LOGIN: ${{ inputs.bot-login }}
+        INPUT_TOKEN: ${{ inputs.token }}
+
+    - name: Run vesvabot
+      shell: bash
+      run: |
+        cd "$GITHUB_ACTION_PATH"
+        go build -o "$RUNNER_TEMP/vesvabot" ./cmd/vesvabot
+        "$RUNNER_TEMP/vesvabot"
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_LLM_PROVIDER: ${{ inputs.llm-provider }}
+        INPUT_LLM_MODEL: ${{ inputs.llm-model }}
+        INPUT_LLM_API_KEY: ${{ inputs.llm-api-key }}
+        INPUT_LLM_BASE_URL: ${{ inputs.llm-base-url }}
+        INPUT_PROMPT_FILE: ${{ inputs.prompt-file }}
+        INPUT_SKILLS_DIR: ${{ inputs.skills-dir }}
+        INPUT_ISSUE_NUMBER: ${{ inputs.issue-number }}
+        INPUT_PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
+        INPUT_RELEASE_ID: ${{ inputs.release-id }}
+        INPUT_COMMENT_ID: ${{ inputs.comment-id }}
+        INPUT_REQUIRED_PERMISSION: ${{ inputs.required-permission }}
+        INPUT_UNAUTHORIZED_ACTION: ${{ inputs.unauthorized-action }}
+        INPUT_BOT_LOGIN: ${{ inputs.bot-login }}
+        INPUT_BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        INPUT_BASE_BRANCH: ${{ inputs.base-branch }}
+        INPUT_MAX_ITERATIONS: ${{ inputs.max-iterations }}
+        INPUT_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+        INPUT_MAX_ATTACHMENTS: ${{ inputs.max-attachments }}
+        INPUT_WORKSPACE: ${{ inputs.workspace }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_GITHUB_SERVER_URL: ${{ inputs.github-server-url }}
+        INPUT_GHES_API_BASE_URL: ${{ inputs.ghes-api-base-url }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
