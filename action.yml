@@ -1,11 +1,10 @@
 name: 'Vesvabot'
 description: >-
-  AI GitHub bot powered by the Vesvai Go SDK. Solves labeled issues and opens
-  pull requests, reviews pull requests, answers @vesvabot mentions from
-  repository admins, and rewrites release notes.
+  AI GitHub bot powered by the Vesvai. Solves labeled issues and opens
+  pull requests, reviews pull requests, and more...
 author: 'vesvabot'
 branding:
-  icon: 'bot'
+  icon: 'code'
   color: 'purple'
 
 inputs:
