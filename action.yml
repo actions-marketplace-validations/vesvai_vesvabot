@@ -14,8 +14,7 @@ inputs:
     required: true
   token:
     description: >-
-      GitHub token. Use ${{ secrets.GITHUB_TOKEN }} or a fine-grained PAT for
-      the bot account.
+      GitHub token. Pass GITHUB_TOKEN or a fine-grained PAT from the calling workflow.
     required: true
 
   llm-provider:
