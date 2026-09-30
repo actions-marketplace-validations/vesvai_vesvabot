@@ -20,12 +20,12 @@ jobs:
           fetch-depth: 0
 
       - name: Run vesvabot
-        uses: vesvabot/vesvabot@v1
+        uses: vesvabot/vesvabot@v0.1
         with:
           mode: solve-issue
           token: ${{ secrets.GITHUB_TOKEN }}
-          llm-provider: anthropic
-          llm-model: ${{ vars.VESVABOT_MODEL }}
+          llm-provider: ${{ secrets.VESVABOT_PROVIDER }}
+          llm-model: ${{ secrets.VESVABOT_MODEL }}
           llm-api-key: ${{ secrets.VESVABOT_API_KEY }}
           prompt-file: .github/prompts/solve-issue.md
           skills-dir: .github/prompts

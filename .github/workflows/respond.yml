@@ -17,12 +17,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run vesvabot
-        uses: vesvabot/vesvabot@v1
+        uses: vesvabot/vesvabot@v0.1
         with:
           mode: respond
           token: ${{ secrets.GITHUB_TOKEN }}
-          llm-provider: anthropic
-          llm-model: ${{ vars.VESVABOT_MODEL }}
+          llm-provider: ${{ secrets.VESVABOT_PROVIDER }}
+          llm-model: ${{ secrets.VESVABOT_MODEL }}
           llm-api-key: ${{ secrets.VESVABOT_API_KEY }}
           prompt-file: .github/prompts/respond.md
           skills-dir: .github/prompts
